@@ -1,36 +1,35 @@
 import requests
-import sqlite3
 import json
+from sqlalchemy import select
 from sqlalchemy.orm import Session
-from db_model import YtParser
+from Database.db_model import YtParser
 
 # response = requests.get('https://www.youtube.com/c/AzazinKreet/videos')
 
 
 def check_new_video(yt_channel: str, engine) -> None:
-    response = requests.get(yt_channel).text.split('"title":{"runs":')[1].split(',')
-    video_title = json.loads(response[0][:-1])
-    video_url = json.loads(response[5][40:] + '}')
+    response = requests.get(yt_channel).text.split('"title":{"runs":')[1].split('"')
+    video_title = response[response.index('text') + 2]
+    video_url = response[response.index('url') + 2]
     with Session(engine) as session:
-        #cur.execute("SELECT last_video_title FROM chanels WHERE yt_chanel=:chanel", {"chanel": yt_chanel})
-        #db_title = cur.fetchone()
-        if db_title != video_title:
-            try:
-                #cur.execute("UPDATE chanels SET last_video_title=:title WHERE last_video_title=:old_title",
-                            #{"title": video_title, "old_title": db_title})
-                #con.commit()
-            except:
-                print('Не удалось обновить данные')
+        db_video_title = session.execute(select(YtParser.video_title).where(YtParser.yt_channel == yt_channel))
+        if db_video_title != video_title:
+            video_url = 'https://www.youtube.com' + video_url
+            result = session.execute(select(YtParser).where(YtParser.yt_channel == yt_channel)).scalar_one()
+            result.video_title = video_title
+            result.video_url = video_url
+            session.commit()
         else:
             return
 
 
-def save_channels(ds_channel: str, yt_channel: str, engine):
+def save_channels(ds_channel: str, yt_channel: str, engine) -> None:
     with Session(engine) as session:
-        data = YtParser(
+        data = YtParser(                # TODO Сделать проверку на повторяющиеся каналы
             yt_channel=yt_channel,
             ds_channel=ds_channel
         )
         session.add(data)
         session.commit()
     check_new_video(yt_channel, engine)
+    return
