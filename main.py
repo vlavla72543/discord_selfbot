@@ -1,5 +1,4 @@
 import discord
-from discord import Embed
 from discord.ext import commands
 from config import settings
 from sqlalchemy import create_engine
@@ -21,17 +20,18 @@ async def on_ready():
 
 @bot.command()
 async def info(ctx):
-    embed = Embed(colour=0xff9900, title='title aboba', description='desk')
-    embed.add_field(name='hello', value='cd')
-    ctx.message.content = 'aoeu'
-    await ctx.send(embed=embed)
+    await ctx.send('')
 
 
 @bot.command()
 async def test(ctx):
-    url = ctx.message.content.split(' ')
-    if url[1].startswith('https://www.youtube.com/'):
-        save_channels(ds_channel=ctx.message.channel.id, yt_channel=url[1], engine=engine)
-
+    urls = ctx.message.content.split(' ')
+    yt_channels = []
+    for url in urls[1:]:
+        if url.startswith('https://www.youtube.com/') and url.count('/') == 4:
+            yt_channels.append(url + '/videos')
+        else:
+            await ctx.send('Ссылка указана неверно')
+    save_channels(ds_channel=ctx.message.channel.id, yt_channels=yt_channels, engine=engine)
 
 bot.run(settings['token'], bot=False)
