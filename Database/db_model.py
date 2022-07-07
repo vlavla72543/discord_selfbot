@@ -11,8 +11,7 @@ class YtParser(Base):
     yt_channel = Column(String)
     ds_channel = Column(String)
     video_title = Column(String)
-    video_url = Column(String)
 
     def __repr__(self):
         return f"YtParser(id={self.id!r}, yt_channel={self.yt_channel!r}, ds_channel={self.ds_channel!r}," \
-               f"video_title={self.video_title!r}, video_url={self.video_url!r}"
+               f"video_title={self.video_title!r}"

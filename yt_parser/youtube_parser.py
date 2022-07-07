@@ -1,53 +1,64 @@
 import requests
 import schedule
+from time import sleep
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from Database.db_model import YtParser
-from time import sleep
+from config import engine, bot
 
 
-def check_new_video(yt_channels: list, engine) -> None:  # TODO возможно добавить сессию в параметры
+event_data = []
+
+
+def check_new_video(yt_channels: list, session) -> tuple:
     for yt_channel in yt_channels:
-        sleep(5)  # TODO переместить
         response = requests.get(yt_channel).text.split('"title":{"runs":')[1].split('"')
+        sleep(1)
         video_title = response[response.index('text') + 2]
-        video_url = response[response.index('url') + 2]
-        with Session(engine) as session:
-            db_video_title = session.execute(select(YtParser.video_title).where(YtParser.yt_channel == yt_channel))
-            if db_video_title != video_title:
-                video_url = 'https://www.youtube.com' + video_url
-                result = session.execute(select(YtParser).where(YtParser.yt_channel == yt_channel)).scalar_one()
-                result.video_title = video_title
-                result.video_url = video_url
-                session.commit()
-            else:
-                return
+        result = session.execute(select(YtParser).where(YtParser.yt_channel == yt_channel)).scalar_one()
+        if not result.video_title:
+            result.video_title = video_title
+            session.commit()
+            continue
+        elif result.video_title != video_title:
+            video_url = 'https://www.youtube.com' + response[response.index('url') + 2]
+            result.video_title = video_title
+            data = (result.ds_channel.split(' '), video_url)
+            session.commit()
+            yield data
 
 
 def save_channels(ds_channel: str, yt_channels: list, engine) -> None:
     with Session(engine) as session:
         for yt_channel in yt_channels:
-            result = session.execute(select(YtParser.yt_channel, YtParser.ds_channel)).scalar_one()
-            print(result.yt_channel)
-            if yt_channel in session.scalars(result.yt_channel) and \
-                    ds_channel not in session.scalars(result.ds_channel):
-                sql_update_yt = select(YtParser).where(YtParser.yt_channel == yt_channel)
-                row = session.scalar(sql_update_yt)
-                row.ds_channel = row.ds_channel + ',' + str(ds_channel)
-            else:
+            try:
+                result = session.execute(select(YtParser).where(YtParser.yt_channel == yt_channel)).scalar_one()
+            except:
                 data = YtParser(
                     yt_channel=yt_channel,
                     ds_channel=ds_channel
                 )
                 session.add(data)
+            else:
+                if ds_channel in result.ds_channel:
+                    pass  # TODO output list of track yt_channel
+                else:
+                    result.ds_channel += ' ' + ds_channel
         session.commit()
-    check_new_video(yt_channel, engine)
-    return
 
 
 def yt_parser_timer(engine) -> None:
     with Session(engine) as session:
         result = session.execute(select(YtParser.yt_channel)).scalars().all()
-        print(len(result))
-        # for data in result:
-        #    print(data)
+        for data in check_new_video(result, session):
+            for channel in data[0]:
+
+
+
+schedule.every(30).seconds.do(yt_parser_timer, engine=engine)
+
+
+def start_timer():
+    while True:
+        schedule.run_pending()
+        sleep(1)
