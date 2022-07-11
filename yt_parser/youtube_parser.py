@@ -1,3 +1,5 @@
+import asyncio
+
 import requests
 import schedule
 from time import sleep
@@ -5,7 +7,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from Database.db_model import YtParser
 from config import engine, bot
-
 
 event_data = []
 
@@ -47,18 +48,17 @@ def save_channels(ds_channel: str, yt_channels: list, engine) -> None:
         session.commit()
 
 
-def yt_parser_timer(engine) -> None:
+def sender(engine) -> None:
     with Session(engine) as session:
         result = session.execute(select(YtParser.yt_channel)).scalars().all()
         for data in check_new_video(result, session):
-            for channel in data[0]:
-
-
-
-schedule.every(30).seconds.do(yt_parser_timer, engine=engine)
+            event_data.append(data)
 
 
 def start_timer():
     while True:
         schedule.run_pending()
         sleep(1)
+
+
+schedule.every(30).seconds.do(sender, engine)
