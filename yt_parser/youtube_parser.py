@@ -1,14 +1,10 @@
-import asyncio
-
 import requests
 import schedule
 from time import sleep
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from Database.db_model import YtParser
-from config import engine, bot
-
-event_data = []
+from config import engine
 
 
 def check_new_video(yt_channels: list, session) -> tuple:
@@ -26,7 +22,7 @@ def check_new_video(yt_channels: list, session) -> tuple:
             result.video_title = video_title
             data = (result.ds_channel.split(' '), video_url)
             session.commit()
-            yield data
+            yield data  # TODO удалять каналы без видео
 
 
 def save_channels(ds_channel: str, yt_channels: list, engine) -> None:
@@ -42,23 +38,7 @@ def save_channels(ds_channel: str, yt_channels: list, engine) -> None:
                 session.add(data)
             else:
                 if ds_channel in result.ds_channel:
-                    pass  # TODO output list of track yt_channel
+                    pass
                 else:
                     result.ds_channel += ' ' + ds_channel
         session.commit()
-
-
-def sender(engine) -> None:
-    with Session(engine) as session:
-        result = session.execute(select(YtParser.yt_channel)).scalars().all()
-        for data in check_new_video(result, session):
-            event_data.append(data)
-
-
-def start_timer():
-    while True:
-        schedule.run_pending()
-        sleep(1)
-
-
-schedule.every(30).seconds.do(sender, engine)
