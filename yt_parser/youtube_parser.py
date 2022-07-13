@@ -10,7 +10,9 @@ from config import engine
 def check_new_video(yt_channels: list, session) -> tuple:
     for yt_channel in yt_channels:
         response = requests.get(yt_channel).text.split('"title":{"runs":')[1].split('"')
-        sleep(1)
+        sleep(5)
+        if not response[response.index('url') + 2].startswith('/watch'):
+            continue
         video_title = response[response.index('text') + 2]
         result = session.execute(select(YtParser).where(YtParser.yt_channel == yt_channel)).scalar_one()
         if not result.video_title:
@@ -22,7 +24,7 @@ def check_new_video(yt_channels: list, session) -> tuple:
             result.video_title = video_title
             data = (result.ds_channel.split(' '), video_url)
             session.commit()
-            yield data  # TODO удалять каналы без видео
+            yield data
 
 
 def save_channels(ds_channel: str, yt_channels: list, engine) -> None:
