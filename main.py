@@ -1,3 +1,4 @@
+from random import randint
 from time import sleep
 import requests
 import schedule
@@ -25,7 +26,7 @@ timer1 = Thread(target=start_timer1, name='start_timer_event')
 timer1.start()
 
 
-schedule.every(30).seconds.do(bot.dispatch, 'timer_event', engine, bot)
+schedule.every(5).minutes.do(bot.dispatch, 'timer_event', engine, bot)
 
 
 @bot.event
@@ -46,8 +47,18 @@ async def on_ready():
 @bot.command()
 async def info(ctx):
     await ctx.send('```доступные команды\n   vla!track (ссылка на ютуб канал/каналы)\n   пример: '
-                   'vla!track https://www.youtube.com/c/abc https://www.youtube.com/channel/abc2```\n```На '
+                   'vla!track https://www.youtube.com/c/abc https://www.youtube.com/channel/abc2\n\n'
+                   '   vla!roll [число]\n   пример: vla!roll 100```\n```На '
                    'пропитание\n   BTC: 3NnyGcFhE2hNPGe9movtxxk47w3Gq7tpmk```')
+
+
+@bot.command()
+async def roll(ctx):
+    number = int(ctx.message.content.split(' ')[1])
+    if number <= 0:
+        await ctx.send('Введённыое число меньше или равно нулю')
+    else:
+        await ctx.send(f'Выпало число: {randint(0,number)}')
 
 
 @bot.command()

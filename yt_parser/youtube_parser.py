@@ -1,10 +1,8 @@
 import requests
-import schedule
 from time import sleep
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from Database.db_model import YtParser
-from config import engine
 
 
 def check_new_video(yt_channels: list, session) -> tuple:
@@ -17,14 +15,21 @@ def check_new_video(yt_channels: list, session) -> tuple:
         result = session.execute(select(YtParser).where(YtParser.yt_channel == yt_channel)).scalar_one()
         if not result.video_title:
             result.video_title = video_title
+            result.video_title2 = video_title
             session.commit()
             continue
         elif result.video_title != video_title:
-            video_url = 'https://www.youtube.com' + response[response.index('url') + 2]
-            result.video_title = video_title
-            data = (result.ds_channel.split(' '), video_url)
-            session.commit()
-            yield data
+            if result.video_title2 == video_title:
+                result.video_title = video_title
+                session.commit()
+            else:
+                video_url = 'https://www.youtube.com' + response[response.index('url') + 2]
+                title = result.video_title
+                result.video_title2 = title
+                result.video_title = video_title
+                data = (result.ds_channel.split(' '), video_url)
+                session.commit()
+                yield data
 
 
 def save_channels(ds_channel: str, yt_channels: list, engine) -> None:
